@@ -1,0 +1,31 @@
+version 17.9
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname rtr-compliant
+!
+enable secret 9 $9$abcdef
+!
+aaa new-model
+!
+ip ssh version 2
+no ip http server
+no ip http secure-server
+no service pad
+no cdp run
+!
+snmp-server group ADMIN v3 priv
+!
+line con 0
+ exec-timeout 5 0
+line vty 0 15
+ exec-timeout 5 0
+ transport input ssh
+!
+ntp authenticate
+ntp server 10.0.0.1 key 1
+logging trap informational
+logging host 10.0.0.2
+!
+end
