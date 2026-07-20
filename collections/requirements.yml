@@ -1,0 +1,6 @@
+---
+collections:
+  - name: cisco.ios
+  - name: ansible.platform
+  - name: ansible.controller
+  - name: ansible.utils
