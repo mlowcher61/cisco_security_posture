@@ -1,0 +1,77 @@
+---
+aap_job_templates:
+  - name: "Audit - Cisco IOS Security Posture"
+    organization: "Network Security"
+    project: "Cisco Security Posture"
+    playbook: "playbooks/audit_posture.yml"
+    inventory: "Cisco Network Inventory"
+    credentials:
+      - "Cisco Network Machine Credential"
+    ask_variables_on_launch: false
+    survey_enabled: true
+    survey_spec:
+      name: "Cisco Posture Audit Survey"
+      description: "Scope and gating for the posture audit"
+      spec:
+        - question_name: "Categories to check (comma-separated, blank = all)"
+          question_description: "management, services, snmp, logging, ntp, interfaces, control_plane, software"
+          variable: posture_categories_raw
+          type: text
+          default: ""
+          required: false
+        - question_name: "Minimum severity"
+          question_description: "Only evaluate checks at or above this severity"
+          variable: posture_severity_floor
+          type: multiplechoice
+          default: "low"
+          choices: ["low", "medium", "high"]
+          required: true
+        - question_name: "Fail job on non-compliance?"
+          question_description: "true fails the job when any check fails; false is report-only"
+          variable: posture_fail_on_noncompliance
+          type: multiplechoice
+          default: "true"
+          choices: ["true", "false"]
+          required: true
+        - question_name: "Report format"
+          question_description: "Where to emit the posture report"
+          variable: posture_report_format
+          type: multiplechoice
+          default: "both"
+          choices: ["console", "file", "both"]
+          required: true
+
+  - name: "Remediate - Cisco IOS Security Posture"
+    organization: "Network Security"
+    project: "Cisco Security Posture"
+    playbook: "playbooks/remediate_posture.yml"
+    inventory: "Cisco Network Inventory"
+    credentials:
+      - "Cisco Network Machine Credential"
+    ask_variables_on_launch: false
+    survey_enabled: true
+    survey_spec:
+      name: "Cisco Posture Remediation Survey"
+      description: "Remediation is dry-run by default"
+      spec:
+        - question_name: "Dry run?"
+          question_description: "yes previews changes without writing to the device"
+          variable: posture_remediate_dry_run
+          type: multiplechoice
+          default: "true"
+          choices: ["true", "false"]
+          required: true
+        - question_name: "Minimum severity to remediate"
+          question_description: "Only push fixes for checks at or above this severity"
+          variable: posture_remediate_severity_floor
+          type: multiplechoice
+          default: "high"
+          choices: ["low", "medium", "high"]
+          required: true
+        - question_name: "Save config after change?"
+          question_description: "Write mem after a successful, non-dry-run remediation"
+          variable: posture_remediate_save_config
+          type: multiplechoice
+          default: "false"
+          choices: ["true", "false"]
+          required: true

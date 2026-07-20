@@ -1,0 +1,10 @@
+---
+aap_groups:
+  - name: "cisco_ios"
+    inventory: "Cisco Network Inventory"
+    description: "IOS/IOS-XE devices"
+    variables:
+      ansible_connection: ansible.netcommon.network_cli
+      ansible_network_os: cisco.ios.ios
+      ansible_become: true
+      ansible_become_method: enable

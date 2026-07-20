@@ -1,0 +1,84 @@
+---
+# Applies all AAP config-as-code objects for the Cisco security posture solution.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r collections/requirements.yml
+#   export CONTROLLER_HOST=https://your-aap-controller
+#   export CONTROLLER_USERNAME=admin
+#   export CONTROLLER_PASSWORD=<password>   # or CONTROLLER_OAUTH_TOKEN
+#
+# Usage:
+#   ansible-playbook configure_aap/configure.yml
+
+- name: Configure AAP for Cisco security posture
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - vars/organizations.yml
+    - vars/projects.yml
+    - vars/inventories.yml
+    - vars/groups.yml
+    - vars/credentials.yml
+    - vars/job_templates.yml
+
+  tasks:
+    - name: Create organizations
+      ansible.platform.organization:
+        name: "{{ item.name }}"
+        description: "{{ item.description | default(omit) }}"
+        state: present
+      loop: "{{ aap_organizations }}"
+
+    - name: Create projects
+      ansible.controller.project:
+        name: "{{ item.name }}"
+        organization: "{{ item.organization }}"
+        scm_type: "{{ item.scm_type }}"
+        scm_url: "{{ item.scm_url }}"
+        scm_branch: "{{ item.scm_branch | default('main') }}"
+        scm_clean: "{{ item.scm_clean | default(true) }}"
+        update_on_launch: "{{ item.update_on_launch | default(true) }}"
+        state: present
+      loop: "{{ aap_projects }}"
+
+    - name: Create inventories
+      ansible.controller.inventory:
+        name: "{{ item.name }}"
+        organization: "{{ item.organization }}"
+        description: "{{ item.description | default(omit) }}"
+        state: present
+      loop: "{{ aap_inventories }}"
+
+    - name: Create inventory groups
+      ansible.controller.group:
+        name: "{{ item.name }}"
+        inventory: "{{ item.inventory }}"
+        description: "{{ item.description | default(omit) }}"
+        variables: "{{ item.variables | default(omit) }}"
+        state: present
+      loop: "{{ aap_groups }}"
+
+    - name: Create machine credentials (object only — set secrets in AAP UI)
+      ansible.controller.credential:
+        name: "{{ item.name }}"
+        organization: "{{ item.organization }}"
+        credential_type: "{{ item.credential_type }}"
+        description: "{{ item.description | default(omit) }}"
+        state: present
+      loop: "{{ aap_credentials }}"
+
+    - name: Create job templates with surveys
+      ansible.controller.job_template:
+        name: "{{ item.name }}"
+        organization: "{{ item.organization }}"
+        project: "{{ item.project }}"
+        playbook: "{{ item.playbook }}"
+        inventory: "{{ item.inventory }}"
+        credentials: "{{ item.credentials | default([]) }}"
+        ask_variables_on_launch: "{{ item.ask_variables_on_launch | default(false) }}"
+        survey_enabled: "{{ item.survey_enabled | default(false) }}"
+        survey_spec: "{{ item.survey_spec | default(omit) }}"
+        state: present
+      loop: "{{ aap_job_templates }}"

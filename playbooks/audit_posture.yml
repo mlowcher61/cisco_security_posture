@@ -2,5 +2,14 @@
 - name: Audit Cisco IOS security posture
   hosts: all
   gather_facts: false
+  pre_tasks:
+    # Only override when the survey supplied a non-empty value; otherwise the
+    # role default (posture_categories = all valid categories) applies.
+    - name: Derive category list from survey text
+      ansible.builtin.set_fact:
+        posture_categories: "{{ posture_categories_raw.split(',') | map('trim') | select | list }}"
+      when:
+        - posture_categories_raw is defined
+        - posture_categories_raw | length > 0
   roles:
     - cisco_posture_audit

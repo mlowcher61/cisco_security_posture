@@ -1,0 +1,5 @@
+---
+aap_inventories:
+  - name: "Cisco Network Inventory"
+    organization: "Network Security"
+    description: "Cisco IOS/IOS-XE devices under posture management"

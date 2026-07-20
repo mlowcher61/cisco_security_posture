@@ -1,0 +1,4 @@
+---
+aap_organizations:
+  - name: "Network Security"
+    description: "Cisco IOS security posture automation"

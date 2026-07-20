@@ -1,0 +1,9 @@
+---
+aap_projects:
+  - name: "Cisco Security Posture"
+    organization: "Network Security"
+    scm_type: "git"
+    scm_url: "https://github.com/mlowcher61/cisco_security_posture.git"
+    scm_branch: "main"
+    scm_clean: true
+    update_on_launch: true
