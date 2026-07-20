@@ -8,3 +8,6 @@
 - name: Evaluate posture checks
   ansible.builtin.import_tasks: checks.yml
   when: posture_device_error is not defined
+
+- name: Render posture report and gate the job
+  ansible.builtin.import_tasks: report.yml

@@ -1,0 +1,49 @@
+---
+- name: Render posture report and gate the job
+  when: posture_device_error is not defined
+  block:
+    - name: Compute posture summary
+      ansible.builtin.set_fact:
+        posture_failed_list: "{{ posture_results | selectattr('passed', 'equalto', false) | list }}"
+        posture_total: "{{ posture_results | length }}"
+
+    - name: Render posture report header
+      ansible.builtin.debug:
+        msg:
+          - "CISCO IOS SECURITY POSTURE — {{ inventory_hostname }}"
+          - "================================================"
+
+    - name: Render posture report lines
+      ansible.builtin.debug:
+        msg: >-
+          [ {{ 'PASS' if (item.passed | bool) else 'FAIL' }} ]
+          {{ '%-45s' | format(item.name) }} : {{ item.actual | trim | truncate(40) }}
+          {{ '' if (item.passed | bool) else '  <-- ' ~ item.severity ~ ' (' ~ item.cis ~ ')' }}
+      loop: "{{ posture_results }}"
+      loop_control:
+        label: "{{ item.id }}"
+
+    - name: Render result summary line
+      ansible.builtin.debug:
+        msg: >-
+          RESULT: {{ 'COMPLIANT' if (posture_failed_list | length == 0) else 'NON-COMPLIANT' }}
+          ({{ posture_failed_list | length }} of {{ posture_total }} checks failed)
+
+    - name: Publish compliance stats
+      ansible.builtin.set_stats:
+        data:
+          posture_total: "{{ posture_total | int }}"
+          posture_failed: "{{ posture_failed_list | length }}"
+          posture_compliant: "{{ (posture_failed_list | length) == 0 }}"
+
+    - name: Fail the job when non-compliant
+      ansible.builtin.fail:
+        msg: "NON-COMPLIANT: {{ posture_failed_list | length }} of {{ posture_total }} checks failed"
+      when:
+        - posture_fail_on_noncompliance | bool
+        - posture_failed_list | length > 0
+
+- name: Report device error (unreachable)
+  ansible.builtin.debug:
+    msg: "DEVICE ERROR on {{ inventory_hostname }}: {{ posture_device_error }}"
+  when: posture_device_error is defined
