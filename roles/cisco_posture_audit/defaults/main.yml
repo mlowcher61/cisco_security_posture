@@ -5,6 +5,9 @@ posture_fail_on_noncompliance: true
 posture_report_format: both          # console | file | both
 posture_report_dir: "./reports"
 
+# Approved minimum IOS version (software currency check)
+posture_ios_min_version: "16.0"
+
 # Fixture-mode inputs (unset in production; set by tests)
 posture_fixture_file: ""
 posture_fixture_version: "0.0"
@@ -26,8 +29,11 @@ posture_severity_order:
   medium: 1
   high: 2
 
-# THE CHECK CATALOG — stub, replaced in full by Task 6
+# THE CHECK CATALOG
+# Every check is one data entry. type is present | absent | match | version_ge.
+# Omit remediate (or set it to []) to make a check report-only.
 posture_checks:
+  # ---- management ----
   - name: "service password-encryption enabled"
     id: "mgmt-password-encryption"
     category: "management"
@@ -37,3 +43,227 @@ posture_checks:
     pattern: 'service password-encryption'
     remediate:
       - "service password-encryption"
+
+  - name: "enable secret set (not enable password)"
+    id: "mgmt-enable-secret"
+    category: "management"
+    severity: "high"
+    cis: "1.1.1"
+    type: "present"
+    pattern: '(?m)^enable secret '
+    remediate: []
+
+  - name: "legacy enable password absent"
+    id: "mgmt-no-enable-password"
+    category: "management"
+    severity: "high"
+    cis: "1.1.1"
+    type: "absent"
+    pattern: '(?m)^enable password '
+    remediate:
+      - "no enable password"
+
+  - name: "AAA new-model enabled"
+    id: "mgmt-aaa-new-model"
+    category: "management"
+    severity: "medium"
+    cis: "1.3"
+    type: "present"
+    pattern: '(?m)^aaa new-model'
+    remediate:
+      - "aaa new-model"
+
+  - name: "SSH version 2 configured"
+    id: "mgmt-ssh-v2"
+    category: "management"
+    severity: "high"
+    cis: "3.5.2"
+    type: "match"
+    pattern: 'ip ssh version (\d)'
+    expected: "2"
+    remediate:
+      - "ip ssh version 2"
+
+  - name: "Telnet disabled on VTY lines"
+    id: "mgmt-vty-no-telnet"
+    category: "management"
+    severity: "high"
+    cis: "1.1.5"
+    type: "absent"
+    pattern: 'transport input .*telnet'
+    remediate:
+      - "line vty 0 15"
+      - "transport input ssh"
+
+  - name: "exec-timeout set on VTY"
+    id: "mgmt-vty-exec-timeout"
+    category: "management"
+    severity: "medium"
+    cis: "1.1.4"
+    type: "present"
+    pattern: '(?ms)line vty 0 15.*?exec-timeout'
+    remediate:
+      - "line vty 0 15"
+      - "exec-timeout 5 0"
+
+  # ---- services ----
+  - name: "HTTP server disabled"
+    id: "svc-no-http-server"
+    category: "services"
+    severity: "high"
+    cis: "1.2.4"
+    type: "absent"
+    pattern: '(?m)^ip http server'
+    remediate:
+      - "no ip http server"
+
+  - name: "PAD service disabled"
+    id: "svc-no-pad"
+    category: "services"
+    severity: "low"
+    cis: "1.2.2"
+    type: "present"
+    pattern: '(?m)^no service pad'
+    remediate:
+      - "no service pad"
+
+  - name: "IP source-route disabled"
+    id: "svc-no-source-route"
+    category: "services"
+    severity: "medium"
+    cis: "1.2.3"
+    type: "present"
+    pattern: '(?m)^no ip source-route'
+    remediate:
+      - "no ip source-route"
+
+  - name: "BOOTP server disabled"
+    id: "svc-no-bootp"
+    category: "services"
+    severity: "low"
+    cis: "1.2.6"
+    type: "present"
+    pattern: '(?m)^no ip bootp server'
+    remediate:
+      - "no ip bootp server"
+
+  - name: "CDP disabled globally"
+    id: "svc-no-cdp"
+    category: "services"
+    severity: "low"
+    cis: "1.2.7"
+    type: "present"
+    pattern: '(?m)^no cdp run'
+    remediate:
+      - "no cdp run"
+
+  # ---- snmp ----
+  - name: "No 'public' SNMP community"
+    id: "snmp-no-public"
+    category: "snmp"
+    severity: "high"
+    cis: "2.4.1"
+    type: "absent"
+    pattern: 'snmp-server community public'
+    remediate:
+      - "no snmp-server community public"
+
+  - name: "No 'private' SNMP community"
+    id: "snmp-no-private"
+    category: "snmp"
+    severity: "high"
+    cis: "2.4.1"
+    type: "absent"
+    pattern: 'snmp-server community private'
+    remediate:
+      - "no snmp-server community private"
+
+  # ---- logging ----
+  - name: "Service timestamps on logs"
+    id: "log-timestamps"
+    category: "logging"
+    severity: "low"
+    cis: "2.2.1"
+    type: "present"
+    pattern: 'service timestamps log'
+    remediate:
+      - "service timestamps log datetime msec"
+
+  - name: "Logging trap level configured"
+    id: "log-trap-level"
+    category: "logging"
+    severity: "medium"
+    cis: "2.2.3"
+    type: "present"
+    pattern: '(?m)^logging trap '
+    remediate:
+      - "logging trap informational"
+
+  - name: "Remote logging host configured"
+    id: "log-host"
+    category: "logging"
+    severity: "medium"
+    cis: "2.2.4"
+    type: "present"
+    pattern: '(?m)^logging host '
+    remediate: []
+
+  # ---- ntp ----
+  - name: "NTP server configured"
+    id: "ntp-server"
+    category: "ntp"
+    severity: "medium"
+    cis: "2.3.1"
+    type: "present"
+    pattern: '(?m)^ntp server '
+    remediate: []
+
+  - name: "NTP authentication enabled"
+    id: "ntp-authenticate"
+    category: "ntp"
+    severity: "medium"
+    cis: "2.3.2"
+    type: "present"
+    pattern: '(?m)^ntp authenticate'
+    remediate:
+      - "ntp authenticate"
+
+  # ---- interfaces ----
+  - name: "No IP directed-broadcast present"
+    id: "int-no-directed-broadcast"
+    category: "interfaces"
+    severity: "medium"
+    cis: "3.2.1"
+    type: "absent"
+    pattern: '(?m)^\s*ip directed-broadcast'
+    remediate: []
+
+  - name: "Proxy ARP disabled somewhere"
+    id: "int-no-proxy-arp"
+    category: "interfaces"
+    severity: "low"
+    cis: "3.2.2"
+    type: "present"
+    pattern: '(?m)^\s*no ip proxy-arp'
+    remediate: []
+
+  # ---- control_plane ----
+  - name: "OSPF authentication present (if OSPF used)"
+    id: "cp-ospf-auth"
+    category: "control_plane"
+    severity: "medium"
+    cis: "3.3.1"
+    type: "present"
+    pattern: 'ip ospf (message-digest-key|authentication)'
+    remediate: []
+
+  # ---- software ----
+  - name: "IOS version at or above approved minimum"
+    id: "sw-ios-version-floor"
+    category: "software"
+    severity: "high"
+    cis: "1.0"
+    type: "version_ge"
+    pattern: 'version'
+    threshold: "{{ posture_ios_min_version }}"
+    remediate: []

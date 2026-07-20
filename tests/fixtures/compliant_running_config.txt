@@ -2,18 +2,30 @@ version 17.9
 service timestamps debug datetime msec
 service timestamps log datetime msec
 service password-encryption
+no service pad
 !
 hostname rtr-compliant
 !
-enable secret 9 $9$abcdef
+enable secret 9 $9$abcdefghij
+no enable password
 !
 aaa new-model
 !
+no ip source-route
+no ip bootp server
+no cdp run
 ip ssh version 2
 no ip http server
 no ip http secure-server
-no service pad
-no cdp run
+!
+interface GigabitEthernet0/0
+ no ip proxy-arp
+ no ip directed-broadcast
+!
+router ospf 1
+ area 0 authentication message-digest
+interface GigabitEthernet0/1
+ ip ospf message-digest-key 1 md5 7 secret
 !
 snmp-server group ADMIN v3 priv
 !
@@ -24,6 +36,7 @@ line vty 0 15
  transport input ssh
 !
 ntp authenticate
+ntp authentication-key 1 md5 secret
 ntp server 10.0.0.1 key 1
 logging trap informational
 logging host 10.0.0.2

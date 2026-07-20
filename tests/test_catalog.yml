@@ -1,0 +1,47 @@
+---
+# No-hardware regression test for the check catalog.
+# Runs the audit engine against both fixtures and asserts on the outcome.
+#
+#   ansible-playbook tests/test_catalog.yml -i localhost, -e ansible_connection=local
+
+- name: Catalog test — compliant fixture must be fully compliant
+  hosts: all
+  gather_facts: false
+  vars:
+    posture_fixture_file: "{{ playbook_dir }}/fixtures/compliant_running_config.txt"
+    posture_fixture_version: "17.9"
+    posture_fail_on_noncompliance: false
+  roles:
+    - cisco_posture_audit
+  post_tasks:
+    - name: Assert zero failures on the compliant fixture
+      ansible.builtin.assert:
+        that:
+          - posture_failed_list | length == 0
+        fail_msg: >-
+          Compliant fixture reported {{ posture_failed_list | length }} failures:
+          {{ posture_failed_list | map(attribute='id') | list }}
+        success_msg: "Compliant fixture: all {{ posture_total }} checks passed."
+
+- name: Catalog test — non-compliant fixture must fail a known subset
+  hosts: all
+  gather_facts: false
+  vars:
+    posture_fixture_file: "{{ playbook_dir }}/fixtures/noncompliant_running_config.txt"
+    posture_fixture_version: "15.2"
+    posture_fail_on_noncompliance: false
+  roles:
+    - cisco_posture_audit
+  post_tasks:
+    - name: Assert the expected checks failed
+      ansible.builtin.assert:
+        that:
+          - "'mgmt-password-encryption' in failed_ids"
+          - "'mgmt-vty-no-telnet' in failed_ids"
+          - "'snmp-no-public' in failed_ids"
+          - "'svc-no-http-server' in failed_ids"
+          - "'sw-ios-version-floor' in failed_ids"
+        fail_msg: "Non-compliant fixture did not fail the expected checks. Failed: {{ failed_ids }}"
+        success_msg: "Non-compliant fixture failed {{ posture_failed_list | length }} checks as expected."
+      vars:
+        failed_ids: "{{ posture_failed_list | map(attribute='id') | list }}"
