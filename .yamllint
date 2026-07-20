@@ -1,0 +1,24 @@
+---
+# yamllint configuration for the Cisco security posture repository.
+# Aligned with ansible-lint's expected yamllint rules; line length is relaxed
+# to keep Jinja expressions and task lines readable.
+extends: default
+
+rules:
+  line-length:
+    max: 160
+    level: error
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  truthy:
+    allowed-values: ["true", "false", "yes", "no"]
+
+ignore: |
+  collections/ansible_collections/
+  reports/

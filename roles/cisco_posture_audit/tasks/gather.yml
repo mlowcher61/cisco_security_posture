@@ -1,0 +1,42 @@
+---
+- name: Load running-config from fixture (test mode)
+  when: posture_fixture_file | length > 0
+  ansible.builtin.set_fact:
+    posture_config_text: "{{ lookup('ansible.builtin.file', posture_fixture_file) }}"
+    posture_ios_version: "{{ posture_fixture_version }}"
+
+- name: Gather running-config and facts from device
+  when: posture_fixture_file | length == 0
+  block:
+    - name: Run show running-config
+      cisco.ios.ios_command:
+        commands:
+          - show running-config
+      register: posture_show_run
+
+    - name: Gather IOS facts
+      cisco.ios.ios_facts:
+
+    - name: Store config text and version
+      ansible.builtin.set_fact:
+        posture_config_text: "{{ posture_show_run.stdout[0] }}"
+        posture_ios_version: "{{ ansible_net_version | default('0.0') }}"
+  rescue:
+    - name: Record device gather error
+      ansible.builtin.set_fact:
+        posture_device_error: "{{ ansible_failed_result.msg | default('unreachable or gather failed') }}"
+
+- name: Guard against truncated or empty running-config
+  ansible.builtin.assert:
+    that:
+      - posture_config_text | length >= (posture_min_config_bytes | int)
+      - (posture_config_text | regex_search('(?m)^hostname ')) is not none
+      - (posture_config_text | regex_search('(?m)^end\s*$')) is not none
+    fail_msg: >-
+      Running-config appears truncated or empty
+      ({{ posture_config_text | length }} bytes). Refusing to evaluate 'absent'
+      checks against incomplete config — that would report false PASS results.
+      Verify the login account has privilege level 15.
+    success_msg: "Running-config captured ({{ posture_config_text | length }} bytes)."
+    quiet: true
+  when: posture_device_error is not defined

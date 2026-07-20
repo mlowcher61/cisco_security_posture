@@ -1,0 +1,39 @@
+---
+# Engine behaviour
+posture_min_config_bytes: 500
+posture_fail_on_noncompliance: true
+posture_report_format: both          # console | file | both
+posture_report_dir: "./reports"
+
+# Fixture-mode inputs (unset in production; set by tests)
+posture_fixture_file: ""
+posture_fixture_version: "0.0"
+
+# Filtering (surveys narrow these; defaults = everything)
+posture_valid_categories:
+  - management
+  - services
+  - snmp
+  - logging
+  - ntp
+  - interfaces
+  - control_plane
+  - software
+posture_categories: "{{ posture_valid_categories }}"
+posture_severity_floor: low
+posture_severity_order:
+  low: 0
+  medium: 1
+  high: 2
+
+# THE CHECK CATALOG — stub, replaced in full by Task 6
+posture_checks:
+  - name: "service password-encryption enabled"
+    id: "mgmt-password-encryption"
+    category: "management"
+    severity: "high"
+    cis: "1.2.1"
+    type: "present"
+    pattern: 'service password-encryption'
+    remediate:
+      - "service password-encryption"

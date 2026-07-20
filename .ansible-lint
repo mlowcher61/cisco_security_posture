@@ -1,0 +1,28 @@
+---
+# ansible-lint configuration for the Cisco security posture repository.
+
+# House style uses a short semantic variable prefix (posture_) rather than the
+# full role name, consistent with the author's other AAP repositories.
+skip_list:
+  - var-naming[no-role-prefix]
+
+# Certified collections are present in the AAP execution environment but are not
+# installable from public Galaxy (Automation Hub only), so their modules are
+# mocked here to allow offline linting.
+mock_modules:
+  - cisco.ios.ios_command
+  - cisco.ios.ios_facts
+  - cisco.ios.ios_config
+  - ansible.platform.organization
+  - ansible.controller.project
+  - ansible.controller.inventory
+  - ansible.controller.group
+  - ansible.controller.credential
+  - ansible.controller.job_template
+
+exclude_paths:
+  - collections/
+  - docs/
+  - reports/
+  - .superpowers/
+  - tests/fixtures/

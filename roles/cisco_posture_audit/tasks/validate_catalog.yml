@@ -1,0 +1,34 @@
+---
+- name: Validate catalog — required fields and enumerations
+  ansible.builtin.assert:
+    that:
+      - item.id is defined
+      - item.id | length > 0
+      - item.name is defined
+      - item.category in posture_valid_categories
+      - item.severity in ['high', 'medium', 'low']
+      - item.type in ['present', 'absent', 'match', 'version_ge']
+      - item.pattern is defined
+      - not (item.type == 'match' and item.expected is not defined)
+    quiet: true
+    fail_msg: "Invalid check definition: {{ item.id | default('<no id>') }}"
+  loop: "{{ posture_checks }}"
+  loop_control:
+    label: "{{ item.id | default('<no id>') }}"
+
+- name: Validate catalog — ids are unique
+  ansible.builtin.assert:
+    that:
+      - (posture_checks | map(attribute='id') | list | length) ==
+        (posture_checks | map(attribute='id') | unique | list | length)
+    fail_msg: "Duplicate check id detected in catalog"
+    quiet: true
+
+- name: Validate catalog — patterns compile
+  ansible.builtin.debug:
+    msg: "{{ ('probe-string' | regex_search(item.pattern)) | default('', true) }}"
+    verbosity: 2
+  loop: "{{ posture_checks }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: item.type != 'version_ge'

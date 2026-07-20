@@ -1,0 +1,14 @@
+---
+- name: Validate the check catalog before connecting
+  ansible.builtin.import_tasks: validate_catalog.yml
+
+- name: Gather device state
+  ansible.builtin.import_tasks: gather.yml
+
+- name: Announce skeleton reached (temporary — removed in Task 4)
+  ansible.builtin.debug:
+    msg: >-
+      Config loaded ({{ posture_config_text | default('') | length }} bytes),
+      IOS version {{ posture_ios_version | default('unknown') }},
+      {{ posture_checks | length }} checks in catalog.
+  when: posture_device_error is not defined

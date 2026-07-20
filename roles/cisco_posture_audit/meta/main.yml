@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: cisco_posture_audit
+  author: mlowcher61
+  description: Audit Cisco IOS/IOS-XE devices against a security posture baseline
+  license: MIT
+  min_ansible_version: "2.15"
+dependencies: []
