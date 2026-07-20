@@ -108,6 +108,16 @@ posture_checks:
       - "line vty 0 15"
       - "exec-timeout 5 0"
 
+  - name: "Password minimum length enforced"
+    id: "mgmt-password-min-length"
+    category: "management"
+    severity: "medium"
+    cis: "1.1.2"
+    type: "present"
+    pattern: '(?m)^security passwords min-length '
+    remediate:
+      - "security passwords min-length 8"
+
   # ---- services ----
   - name: "HTTP server disabled"
     id: "svc-no-http-server"

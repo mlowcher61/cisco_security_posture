@@ -8,6 +8,7 @@ hostname rtr-compliant
 !
 enable secret 9 $9$abcdefghij
 no enable password
+security passwords min-length 8
 !
 aaa new-model
 !

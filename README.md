@@ -25,7 +25,7 @@ CISCO IOS SECURITY POSTURE — rtr01.example.com
 [ PASS ] SSH version 2 configured                 : ip ssh version 2
 [ FAIL ] No 'public' SNMP community               : snmp-server community public  <-- high (2.4.1)
 ------------------------------------------------
-RESULT: NON-COMPLIANT  (2 of 23 checks failed)
+RESULT: NON-COMPLIANT  (2 of 24 checks failed)
 ```
 
 ## How the check engine works
@@ -109,7 +109,7 @@ to preview the exact config lines, then re-run with **Dry run = false** to apply
 
 | Category | Examples |
 |---|---|
-| management | password-encryption, enable secret, no enable password, AAA, SSHv2, no telnet on VTY, exec-timeout |
+| management | password-encryption, enable secret, no enable password, AAA, SSHv2, no telnet on VTY, exec-timeout, password min-length |
 | services | no ip http server, no service pad, no ip source-route, no ip bootp, no cdp run |
 | snmp | no `public`/`private` communities |
 | logging | service timestamps, logging trap, logging host |
