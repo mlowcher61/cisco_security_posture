@@ -1,0 +1,48 @@
+---
+- name: Select active checks by category and severity floor
+  ansible.builtin.set_fact:
+    posture_active_checks: >-
+      {{ posture_checks
+         | selectattr('category', 'in', posture_categories)
+         | selectattr('severity', 'in', posture_severities_at_or_above_floor)
+         | list }}
+  vars:
+    posture_severities_at_or_above_floor: >-
+      {{ posture_severity_order
+         | dict2items
+         | selectattr('value', 'ge', posture_severity_order[posture_severity_floor])
+         | map(attribute='key') | list }}
+
+- name: Initialize results
+  ansible.builtin.set_fact:
+    posture_results: []
+
+- name: Evaluate each active check
+  ansible.builtin.set_fact:
+    posture_results: "{{ posture_results + [result_item] }}"
+  vars:
+    # regex_findall avoids backreference escaping issues: with a capture group
+    # it returns the group's captures; without one it returns whole matches.
+    found: "{{ posture_config_text | regex_findall(item.pattern, multiline=True, ignorecase=True) }}"
+    matched: "{{ found | length > 0 }}"
+    captured: "{{ (found | first) if (found | length > 0) else '' }}"
+    passed: >-
+      {{ (item.type == 'present' and matched) or
+         (item.type == 'absent' and not matched) or
+         (item.type == 'match' and matched and captured == item.expected) or
+         (item.type == 'version_ge' and (posture_ios_version is version(item.threshold, 'ge'))) }}
+    result_item:
+      id: "{{ item.id }}"
+      name: "{{ item.name }}"
+      category: "{{ item.category }}"
+      severity: "{{ item.severity }}"
+      cis: "{{ item.cis | default('') }}"
+      type: "{{ item.type }}"
+      passed: "{{ passed | bool }}"
+      remediable: "{{ item.remediate is defined and (item.remediate | default([]) | length > 0) }}"
+      actual: >-
+        {{ posture_ios_version if item.type == 'version_ge'
+           else ((found | first) if (found | length > 0) else '(not found)') }}
+  loop: "{{ posture_active_checks }}"
+  loop_control:
+    label: "{{ item.id }}"

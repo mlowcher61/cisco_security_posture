@@ -1,0 +1,28 @@
+---
+posture_checks:
+  - name: "present-type hits"
+    id: "syn-present"
+    category: "management"
+    severity: "high"
+    type: "present"
+    pattern: 'service password-encryption'
+  - name: "absent-type hits"
+    id: "syn-absent"
+    category: "services"
+    severity: "medium"
+    type: "absent"
+    pattern: '(?m)^ip http server'
+  - name: "match-type hits"
+    id: "syn-match"
+    category: "management"
+    severity: "low"
+    type: "match"
+    pattern: 'ip ssh version (\d)'
+    expected: "2"
+  - name: "version_ge hits"
+    id: "syn-version"
+    category: "software"
+    severity: "high"
+    type: "version_ge"
+    pattern: 'version'
+    threshold: "16.0"
