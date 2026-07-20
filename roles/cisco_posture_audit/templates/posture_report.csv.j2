@@ -1,0 +1,4 @@
+id,name,category,severity,cis,result,actual
+{% for r in posture_results %}
+{{ r.id }},"{{ r.name }}",{{ r.category }},{{ r.severity }},{{ r.cis }},{{ 'PASS' if (r.passed | bool) else 'FAIL' }},"{{ r.actual | trim | replace('"', '""') }}"
+{% endfor %}

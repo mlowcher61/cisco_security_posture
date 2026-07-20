@@ -3,7 +3,9 @@
 posture_min_config_bytes: 500
 posture_fail_on_noncompliance: true
 posture_report_format: both          # console | file | both
-posture_report_dir: "./reports"
+# Anchored to the playbook location so artifacts land in a predictable place
+# regardless of the directory the job is launched from.
+posture_report_dir: "{{ playbook_dir }}/reports"
 
 # Approved minimum IOS version (software currency check)
 posture_ios_min_version: "16.0"

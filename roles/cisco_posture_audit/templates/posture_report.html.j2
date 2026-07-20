@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cisco IOS Security Posture — {{ inventory_hostname }}</title>
+<style>
+ body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+ h1 { font-size: 1.3rem; }
+ .summary { font-weight: 600; margin: 1rem 0; }
+ .compliant { color: #197b30; }
+ .noncompliant { color: #b3261e; }
+ table { border-collapse: collapse; width: 100%; }
+ th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 0.9rem; }
+ th { background: #f2f2f2; }
+ .pass { color: #197b30; font-weight: 600; }
+ .fail { color: #b3261e; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Cisco IOS Security Posture — {{ inventory_hostname }}</h1>
+<p class="summary {{ 'compliant' if (posture_failed_list | length == 0) else 'noncompliant' }}">
+ RESULT: {{ 'COMPLIANT' if (posture_failed_list | length == 0) else 'NON-COMPLIANT' }}
+ ({{ posture_failed_list | length }} of {{ posture_total }} checks failed)
+</p>
+<table>
+ <tr><th>Result</th><th>Check</th><th>Category</th><th>Severity</th><th>CIS</th><th>Actual</th></tr>
+{% for r in posture_results %}
+ <tr>
+  <td class="{{ 'pass' if (r.passed | bool) else 'fail' }}">{{ 'PASS' if (r.passed | bool) else 'FAIL' }}</td>
+  <td>{{ r.name }}</td><td>{{ r.category }}</td><td>{{ r.severity }}</td><td>{{ r.cis }}</td>
+  <td>{{ r.actual | trim | e }}</td>
+ </tr>
+{% endfor %}
+</table>
+</body>
+</html>

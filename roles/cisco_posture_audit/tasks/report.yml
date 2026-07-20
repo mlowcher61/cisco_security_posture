@@ -36,6 +36,29 @@
           posture_failed: "{{ posture_failed_list | length }}"
           posture_compliant: "{{ (posture_failed_list | length) == 0 }}"
 
+    - name: Ensure report directory exists
+      ansible.builtin.file:
+        path: "{{ posture_report_dir }}"
+        state: directory
+        mode: "0755"
+      when: posture_report_format in ['file', 'both']
+
+    - name: Write HTML and CSV report artifacts
+      ansible.builtin.template:
+        src: "posture_report.{{ item }}.j2"
+        dest: "{{ posture_report_dir }}/posture_{{ inventory_hostname }}.{{ item }}"
+        mode: "0644"
+      loop:
+        - html
+        - csv
+      when: posture_report_format in ['file', 'both']
+
+    - name: Publish report path
+      ansible.builtin.set_stats:
+        data:
+          posture_report_path: "{{ posture_report_dir }}/posture_{{ inventory_hostname }}.html"
+      when: posture_report_format in ['file', 'both']
+
     - name: Fail the job when non-compliant
       ansible.builtin.fail:
         msg: "NON-COMPLIANT: {{ posture_failed_list | length }} of {{ posture_total }} checks failed"
