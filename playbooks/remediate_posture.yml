@@ -1,0 +1,6 @@
+---
+- name: Remediate Cisco IOS security posture
+  hosts: all
+  gather_facts: false
+  roles:
+    - cisco_posture_remediate

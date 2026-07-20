@@ -1,0 +1,5 @@
+---
+posture_remediate_dry_run: true
+posture_remediate_categories: "{{ posture_valid_categories }}"
+posture_remediate_severity_floor: high
+posture_remediate_save_config: false

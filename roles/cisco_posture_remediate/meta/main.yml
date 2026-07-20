@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: cisco_posture_remediate
+  author: mlowcher61
+  description: Remediate failed Cisco IOS posture checks by pushing their fix lines
+  license: MIT
+  min_ansible_version: "2.15"
+dependencies: []

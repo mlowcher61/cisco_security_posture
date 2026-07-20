@@ -1,0 +1,78 @@
+---
+- name: Run audit to establish current posture
+  ansible.builtin.include_role:
+    name: cisco_posture_audit
+    public: true
+  vars:
+    posture_fail_on_noncompliance: false
+
+- name: Record pre-remediation failures
+  ansible.builtin.set_fact:
+    posture_pre_failed: "{{ posture_failed_list | map(attribute='id') | list }}"
+
+- name: Select failed, remediable, in-scope check ids
+  ansible.builtin.set_fact:
+    posture_target_ids: >-
+      {{ posture_failed_list
+         | selectattr('remediable', 'equalto', true)
+         | selectattr('category', 'in', posture_remediate_categories)
+         | selectattr('severity', 'in', posture_remediate_severities)
+         | map(attribute='id') | list }}
+  vars:
+    posture_remediate_severities: >-
+      {{ posture_severity_order | dict2items
+         | selectattr('value', 'ge', posture_severity_order[posture_remediate_severity_floor])
+         | map(attribute='key') | list }}
+
+- name: Collect remediation config lines from targeted checks
+  ansible.builtin.set_fact:
+    posture_remediation_lines: >-
+      {{ posture_checks
+         | selectattr('id', 'in', posture_target_ids)
+         | map(attribute='remediate') | flatten | list }}
+
+- name: Show planned remediation
+  ansible.builtin.debug:
+    msg:
+      - "Dry run: {{ posture_remediate_dry_run | bool }}"
+      - "Targeted checks: {{ posture_target_ids }}"
+      - "Config lines to push: {{ posture_remediation_lines }}"
+
+- name: Apply remediation config
+  cisco.ios.ios_config:
+    lines: "{{ posture_remediation_lines }}"
+  check_mode: "{{ posture_remediate_dry_run | bool }}"
+  register: posture_remediation
+  when:
+    - posture_remediation_lines | length > 0
+    - posture_fixture_file | default('') | length == 0
+
+- name: Save running-config
+  cisco.ios.ios_config:
+    save_when: modified
+  when:
+    - posture_remediate_save_config | bool
+    - not (posture_remediate_dry_run | bool)
+    - posture_fixture_file | default('') | length == 0
+
+- name: Re-run audit to confirm remediation
+  ansible.builtin.include_role:
+    name: cisco_posture_audit
+    public: true
+  vars:
+    posture_fail_on_noncompliance: false
+  when:
+    - not (posture_remediate_dry_run | bool)
+    - posture_fixture_file | default('') | length == 0
+
+- name: Record post-remediation failures
+  ansible.builtin.set_fact:
+    posture_post_failed: "{{ posture_failed_list | map(attribute='id') | list }}"
+
+- name: Before/after summary
+  ansible.builtin.debug:
+    msg:
+      - "Before: {{ posture_pre_failed | length }} failing — {{ posture_pre_failed }}"
+      - "After:  {{ posture_post_failed | length }} failing — {{ posture_post_failed }}"
+      - "Fixed:  {{ posture_pre_failed | difference(posture_post_failed) }}"
+      - "Manual/remaining: {{ posture_post_failed }}"
