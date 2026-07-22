@@ -16,11 +16,11 @@
   gather_facts: false
 
   vars_files:
-    - vars/organizations.yml
-    - vars/projects.yml
-    - vars/inventories.yml
-    - vars/groups.yml
-    - vars/credentials.yml
+    # - vars/organizations.yml
+    # - vars/projects.yml
+    # - vars/inventories.yml
+    # - vars/groups.yml
+    # - vars/credentials.yml
     - vars/job_templates.yml
 
   tasks:
