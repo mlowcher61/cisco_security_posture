@@ -4,7 +4,7 @@
 # and burn a rescue block each before reporting a device error.
 # Override with -e posture_target=<group> or an extra var on the job template.
 - name: Audit Cisco IOS security posture
-  hosts: "{{ posture_target | default('cisco_ios') }}"
+  hosts: "{{ posture_target | default('cisco') }}"
   gather_facts: false
   pre_tasks:
     # Only override when the survey supplied a non-empty value; otherwise the
