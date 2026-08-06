@@ -132,13 +132,13 @@ host. It follows the same pattern as `build_report_container` in
    `index.html` fleet summary
 5. Prints the public URL
 
-Browse to **`http://<web-host>:8089`**. The landing page lists every device with
+Browse to **`http://<web-host>:8088`**. The landing page lists every device with
 its pass rate and links to the per-device report and CSV.
 
 ```yaml
-posture_web_host: backup-server          # play target for the publish play
+posture_web_host: ansible-1              # play target for the publish play
 posture_web_root: /data/posture
-posture_web_port: 8089                   # toolkit report container uses 8088
+posture_web_port: 8088                   # same port the toolkit report uses
 posture_web_container_name: posture_report
 posture_web_image: docker.io/nginx:stable-alpine3.17-slim
 posture_web_clean: true                  # wipe the root each run
