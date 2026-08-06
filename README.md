@@ -62,7 +62,8 @@ cisco_security_posture/
 ├── collections/requirements.yml
 ├── playbooks/{audit_posture,remediate_posture}.yml
 ├── roles/
-│   ├── cisco_posture_audit/      # catalog + engine + report + templates
+│   ├── cisco_posture_audit/      # catalog + engine + console report
+│   ├── cisco_posture_publish/    # nginx container + HTML site on the web host
 │   └── cisco_posture_remediate/  # filter failed → push → verify
 ├── tests/
 │   ├── fixtures/                 # compliant + non-compliant running-configs
@@ -107,51 +108,56 @@ to preview the exact config lines, then re-run with **Dry run = false** to apply
 
 ## Where to find the report
 
-The audit emits the same results three ways. Which ones you get is controlled by
-the **Report format** survey answer (`console`, `file`, or `both` — default
-`both`).
+The audit emits results three ways. Which you get is controlled by the **Report
+format** survey answer (`console`, `file`, or `both` — default `both`).
 
 | Where | Survey setting | How to read it |
 |---|---|---|
-| **Job output** | `console`, `both` | In the AAP job log, look for the banner `CISCO IOS SECURITY POSTURE — <device>`, the `[ PASS ]` / `[ FAIL ]` lines, and the `RESULT:` summary. Always present. |
-| **HTML + CSV files** | `file`, `both` | Written to the **report host** — see below. The job log prints a `REPORT WRITTEN` block with the exact host and paths. |
-| **AAP job artifacts** | always | Job → **Details** pane → **Artifacts** (or `GET /api/v2/jobs/<id>/` → `.artifacts`). One entry per device: `posture_total`, `posture_failed`, `posture_compliant`, plus the report path. |
+| **Job output** | `console`, `both` | In the AAP job log: the banner `CISCO IOS SECURITY POSTURE — <device>`, the `[ PASS ]` / `[ FAIL ]` lines, and the `RESULT:` summary. Always present. |
+| **Web report** | `file`, `both` | An HTML site served from an nginx container on the web host — see below. The job log ends with a `POSTURE REPORT PUBLISHED` banner containing the URL. |
+| **AAP job artifacts** | always | Job → **Details** → **Artifacts**. One entry per device: `posture_total`, `posture_failed`, `posture_compliant`. |
 
-### Why reports are not written inside the execution environment
+### The web report
 
-Under AAP the playbook runs in an **ephemeral execution environment container**.
-Anything written to `playbook_dir` — or anywhere else in that container — is
-destroyed the instant the job finishes. There is no way to retrieve it
-afterwards.
+`playbooks/audit_posture.yml` has a second play that runs
+[`roles/cisco_posture_publish`](roles/cisco_posture_publish) against the web
+host. It follows the same pattern as `build_report_container` in
+[network-automation/toolkit](https://github.com/network-automation/toolkit):
 
-So the file tasks in `roles/cisco_posture_audit/tasks/report.yml` are
-`delegate_to` a host that outlives the job:
+1. Creates `/data/posture` on the web host
+2. Templates an nginx site config into it
+3. Runs `docker.io/nginx:stable-alpine3.17-slim` via `containers.podman`, host
+   networking, with `/data/posture` bind-mounted to `/usr/share/nginx/html:Z`
+4. Renders `posture_<device>.html` and `.csv` for every audited device, plus an
+   `index.html` fleet summary
+5. Prints the public URL
+
+Browse to **`http://<web-host>:8089`**. The landing page lists every device with
+its pass rate and links to the per-device report and CSV.
 
 ```yaml
-posture_report_host: backup-server              # must be in the inventory
-posture_report_base: /var/tmp/posture_reports
-posture_report_dir: "{{ posture_report_base }}/{{ awx_job_id | default('local') }}"
-posture_report_become: false
+posture_web_host: backup-server          # play target for the publish play
+posture_web_root: /data/posture
+posture_web_port: 8089                   # toolkit report container uses 8088
+posture_web_container_name: posture_report
+posture_web_image: docker.io/nginx:stable-alpine3.17-slim
+posture_web_clean: true                  # wipe the root each run
 ```
 
-Files land as `<posture_report_dir>/posture_<device>.html` and `.csv`. One
-directory per job ID, so history is kept and concurrent jobs never overwrite
-each other.
+**Why a separate play instead of `delegate_to`:** a job template may carry only
+one Machine credential, and the routers already occupy that slot. Running the
+publish work as a real play host means it uses the web host's own inventory
+connection, so no second SSH identity is needed. The web host must be in the
+inventory, reachable, and the play runs `become: true`.
 
-**Requirements for the report host:**
+`posture_web_clean: true` wipes `/data/posture` on every run so a
+decommissioned device cannot leave a stale PASS page behind. Set it to `false`
+to accumulate artifacts instead.
 
-- It must be a host in the **Cisco Network Inventory** (or reachable by name).
-- The job template's machine credential must be able to SSH to it. If your
-  Linux hosts use different credentials than your routers, set `ansible_user`
-  and `ansible_ssh_private_key_file` as host variables on that host in AAP.
-- The SSH user needs write access to `posture_report_base`. `/var/tmp` works
-  out of the box. To serve the HTML over a web server instead, set
-  `posture_report_base: /var/www/html/posture` **and**
-  `posture_report_become: true`.
-
-To go back to writing inside the container (useful for local
-`ansible-navigator` runs, useless under AAP), set
-`posture_report_host: localhost`.
+**Why nothing is written inside the execution environment:** under AAP the
+playbook runs in an ephemeral container, and anything written to `playbook_dir`
+is destroyed when the job finishes. The audit role deliberately writes no files;
+results stay in `hostvars` and the publish play renders them on the web host.
 
 ## The checks
 
@@ -197,9 +203,11 @@ ansible-playbook playbooks/audit_posture.yml -i localhost, \
   -e posture_fixture_file="$(pwd)/tests/fixtures/noncompliant_running_config.txt" \
   -e posture_fixture_version=15.2 \
   -e posture_fail_on_noncompliance=false \
-  -e posture_report_host=localhost \
-  -e posture_report_base="$(pwd)/tests/reports"
+  -e posture_report_format=console
 ```
+
+`posture_report_format=console` skips the publish play, which needs a real web
+host with podman.
 
 ## Safety notes
 
@@ -228,6 +236,7 @@ installable from public Galaxy; `.ansible-lint` mocks their modules for local ru
 | Collection | Purpose |
 |---|---|
 | `ansible.builtin` | set_fact, assert, template, debug, set_stats |
+| `containers.podman` | nginx report container on the web host |
 | `cisco.ios` | ios_command, ios_facts, ios_config |
 | `ansible.platform` | AAP organization management |
 | `ansible.controller` | AAP project, inventory, credential, job template |

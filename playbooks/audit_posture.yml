@@ -1,5 +1,5 @@
 ---
-# Scoped to the cisco_ios group, not 'all'. Targeting every host in the
+# Scoped to the cisco group, not 'all'. Targeting every host in the
 # inventory drags in Linux hosts and localhost, which cannot run ios_command
 # and burn a rescue block each before reporting a device error.
 # Override with -e posture_target=<group> or an extra var on the job template.
@@ -17,3 +17,20 @@
         - posture_categories_raw | length > 0
   roles:
     - cisco_posture_audit
+
+# Publishing is a separate play against the web host, following the
+# network-automation/toolkit build_report_container pattern. Running it as a
+# real play host (rather than delegate_to) means it uses that host's normal
+# inventory connection — no second SSH identity, and no conflict with the one
+# Machine credential slot the routers already occupy.
+#
+# This play still runs when the audit play failed devices for non-compliance:
+# those failures apply to the router hosts, not to the web host, and the
+# results survive in hostvars.
+- name: Publish the posture report to the web host
+  hosts: "{{ posture_web_host | default('backup-server') }}"
+  become: true
+  gather_facts: true
+  roles:
+    - role: cisco_posture_publish
+      when: posture_report_format in ['file', 'both']

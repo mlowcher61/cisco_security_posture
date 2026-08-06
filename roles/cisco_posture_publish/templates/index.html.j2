@@ -1,0 +1,59 @@
+{% set fleet_failed = posture_devices | map('extract', hostvars, 'posture_failed_list') | map('length') | sum %}
+{% set fleet_total = posture_devices | map('extract', hostvars, 'posture_total') | map('int') | sum %}
+{% set noncompliant = posture_devices | map('extract', hostvars, 'posture_failed_list') | map('length') | select('>', 0) | list | length %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cisco IOS Security Posture — Fleet Summary</title>
+<style>
+ body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; color: #151515; }
+ a { color: #06c; }
+ h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+ .meta { color: #6a6e73; font-size: 0.85rem; margin-top: 0; }
+ .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+ .card { border: 1px solid #d2d2d2; border-radius: 6px; padding: 0.75rem 1.25rem; min-width: 8rem; }
+ .card .n { font-size: 1.6rem; font-weight: 600; }
+ .card .l { color: #6a6e73; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+ table { border-collapse: collapse; width: 100%; }
+ th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; font-size: 0.9rem; }
+ th { background: #f2f2f2; }
+ .compliant { color: #197b30; font-weight: 600; }
+ .noncompliant { color: #b3261e; font-weight: 600; }
+ .bar { background: #e8e8e8; border-radius: 3px; height: 8px; width: 120px; display: inline-block; overflow: hidden; vertical-align: middle; }
+ .bar span { background: #197b30; display: block; height: 100%; }
+</style>
+</head>
+<body>
+<h1>Cisco IOS Security Posture</h1>
+<p class="meta">
+ Generated {{ ansible_facts.date_time.iso8601 | default('') }}
+ on {{ inventory_hostname }}{% if awx_job_id is defined %} &middot; AAP job {{ awx_job_id }}{% endif %}
+</p>
+
+<div class="cards">
+ <div class="card"><div class="n">{{ posture_devices | length }}</div><div class="l">Devices</div></div>
+ <div class="card"><div class="n {{ 'compliant' if noncompliant == 0 else 'noncompliant' }}">{{ noncompliant }}</div><div class="l">Non-compliant</div></div>
+ <div class="card"><div class="n">{{ fleet_failed }}</div><div class="l">Failed checks</div></div>
+ <div class="card"><div class="n">{{ fleet_total }}</div><div class="l">Total checks</div></div>
+</div>
+
+<table>
+ <tr><th>Device</th><th>Result</th><th>Passed</th><th>Pass rate</th><th>Report</th></tr>
+{% for d in posture_devices %}
+{%   set failed = hostvars[d].posture_failed_list | length %}
+{%   set total = hostvars[d].posture_total | int %}
+{%   set passed = total - failed %}
+{%   set pct = ((passed / total) * 100) | round | int if total > 0 else 0 %}
+ <tr>
+  <td>{{ d }}</td>
+  <td class="{{ 'compliant' if failed == 0 else 'noncompliant' }}">{{ 'COMPLIANT' if failed == 0 else 'NON-COMPLIANT' }}</td>
+  <td>{{ passed }} / {{ total }}</td>
+  <td><span class="bar"><span style="width: {{ pct }}%"></span></span> {{ pct }}%</td>
+  <td><a href="posture_{{ d }}.html">HTML</a> &middot; <a href="posture_{{ d }}.csv">CSV</a></td>
+ </tr>
+{% endfor %}
+</table>
+</body>
+</html>

@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Cisco IOS Security Posture — {{ inventory_hostname }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cisco IOS Security Posture — {{ posture_device }}</title>
 <style>
- body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+ body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; color: #151515; }
+ a { color: #06c; }
  h1 { font-size: 1.3rem; }
  .summary { font-weight: 600; margin: 1rem 0; }
  .compliant { color: #197b30; }
@@ -14,13 +16,19 @@
  th { background: #f2f2f2; }
  .pass { color: #197b30; font-weight: 600; }
  .fail { color: #b3261e; font-weight: 600; }
+ .meta { color: #6a6e73; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Cisco IOS Security Posture — {{ inventory_hostname }}</h1>
+<p><a href="index.html">&larr; All devices</a></p>
+<h1>Cisco IOS Security Posture — {{ posture_device }}</h1>
 <p class="summary {{ 'compliant' if (posture_failed_list | length == 0) else 'noncompliant' }}">
  RESULT: {{ 'COMPLIANT' if (posture_failed_list | length == 0) else 'NON-COMPLIANT' }}
  ({{ posture_failed_list | length }} of {{ posture_total }} checks failed)
+</p>
+<p class="meta">
+ Generated {{ ansible_facts.date_time.iso8601 | default('') }} &middot;
+ <a href="posture_{{ posture_device }}.csv">Download CSV</a>
 </p>
 <table>
  <tr><th>Result</th><th>Check</th><th>Category</th><th>Severity</th><th>CIS</th><th>Actual</th></tr>

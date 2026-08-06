@@ -19,6 +19,7 @@ mock_modules:
   - ansible.controller.group
   - ansible.controller.credential
   - ansible.controller.job_template
+  - containers.podman.podman_container
 
 exclude_paths:
   - collections/

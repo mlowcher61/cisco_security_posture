@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: cisco_posture_publish
+  author: mlowcher
+  description: >-
+    Publishes Cisco IOS security posture reports to an nginx container on a
+    persistent web host, following the network-automation/toolkit
+    build_report_container pattern.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - networking
+    - cisco
+    - security
+    - reporting
+dependencies: []

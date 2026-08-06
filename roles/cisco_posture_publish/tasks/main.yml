@@ -1,0 +1,104 @@
+---
+# Every host in the previous play that produced results. Reading hostvars this
+# way (rather than a static group) means the publish play stays correct when the
+# survey narrows the audit, or when a device was unreachable and got skipped.
+- name: Collect the devices that produced audit results
+  ansible.builtin.set_fact:
+    posture_devices: >-
+      {{ hostvars | dict2items
+                  | selectattr('value.posture_results', 'defined')
+                  | map(attribute='key') | sort | list }}
+
+- name: Fail early when there is nothing to publish
+  ansible.builtin.assert:
+    that:
+      - posture_devices | length > 0
+    fail_msg: >-
+      No audit results found in hostvars. The audit play produced nothing to
+      publish — check that it targeted the cisco_ios group and that at least one
+      device was reachable.
+    quiet: true
+
+- name: Reset the report root so removed devices leave no stale pages
+  ansible.builtin.file:
+    path: "{{ posture_web_root }}"
+    state: absent
+  when: posture_web_clean | bool
+
+- name: Create the report root
+  ansible.builtin.file:
+    path: "{{ posture_web_root }}"
+    state: directory
+    mode: "0775"
+    recurse: true
+
+- name: Template the nginx site config
+  ansible.builtin.template:
+    src: default.conf.j2
+    dest: "{{ posture_web_root }}/nginx-default.conf"
+    mode: "0644"
+
+# The :Z suffix makes podman relabel both mounts with a private SELinux
+# container context, which is what lets nginx inside the container read them.
+# That is why this role does not need a separate selinux fcontext pass the way
+# the toolkit's build_report_container role does.
+- name: Ensure the posture report container is running
+  containers.podman.podman_container:
+    name: "{{ posture_web_container_name }}"
+    image: "{{ posture_web_image }}"
+    state: started
+    network:
+      - host
+    volumes:
+      - "{{ posture_web_root }}:/usr/share/nginx/html:Z"
+      - "{{ posture_web_root }}/nginx-default.conf:/etc/nginx/conf.d/default.conf:Z"
+    recreate: true
+
+- name: Render the per-device posture reports
+  ansible.builtin.template:
+    src: "posture_report.{{ item.1 }}.j2"
+    dest: "{{ posture_web_root }}/posture_{{ item.0 }}.{{ item.1 }}"
+    mode: "0644"
+  loop: "{{ posture_devices | product(['html', 'csv']) | list }}"
+  loop_control:
+    label: "{{ item.0 }}.{{ item.1 }}"
+  vars:
+    posture_device: "{{ item.0 }}"
+    posture_results: "{{ hostvars[item.0].posture_results }}"
+    posture_failed_list: "{{ hostvars[item.0].posture_failed_list }}"
+    posture_total: "{{ hostvars[item.0].posture_total }}"
+
+- name: Render the fleet summary landing page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ posture_web_root }}/index.html"
+    mode: "0644"
+
+# The toolkit shells out to curl here; uri keeps it a real module call so the
+# task works on hosts without curl and satisfies command-instead-of-module.
+- name: Retrieve the public address of the web host
+  ansible.builtin.uri:
+    url: https://ifconfig.me
+    return_content: true
+    timeout: 5
+  register: posture_public_ip
+  changed_when: false
+  failed_when: false
+
+# Prefer the public address so the link is clickable from outside the lab, but
+# fall back to the host's own FQDN when there is no egress to ifconfig.me.
+- name: Resolve the address to advertise in the report link
+  ansible.builtin.set_fact:
+    posture_web_address: >-
+      {{ posture_public_ip.content | default('', true) | trim
+         | ternary(posture_public_ip.content | default('') | trim,
+                   ansible_facts.fqdn | default(inventory_hostname)) }}
+
+- name: Display the link to the posture report
+  ansible.builtin.debug:
+    msg:
+      - "================================================================"
+      - "POSTURE REPORT PUBLISHED"
+      - "  http://{{ posture_web_address }}:{{ posture_web_port }}"
+      - "  {{ posture_devices | length }} device(s): {{ posture_devices | join(', ') }}"
+      - "================================================================"

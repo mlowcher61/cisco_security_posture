@@ -1,0 +1,14 @@
+---
+# Where the report site lives on the web host. Bind-mounted into the container.
+posture_web_root: /data/posture
+
+# Port nginx listens on. The network-automation/toolkit report container uses
+# 8088; 8089 keeps the two side by side on the same host without colliding.
+posture_web_port: 8089
+
+posture_web_container_name: posture_report
+posture_web_image: docker.io/nginx:stable-alpine3.17-slim
+
+# Report artifacts are regenerated from scratch on every run so a device that
+# drops out of the inventory does not leave a stale page behind.
+posture_web_clean: true

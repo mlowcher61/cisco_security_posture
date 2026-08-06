@@ -4,3 +4,6 @@ collections:
   - name: ansible.platform
   - name: ansible.controller
   - name: ansible.utils
+  # Runs the nginx report container on the web host, matching the
+  # network-automation/toolkit build_report_container pattern.
+  - name: containers.podman

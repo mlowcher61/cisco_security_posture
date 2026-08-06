@@ -11,10 +11,9 @@
     posture_fixture_file: "{{ playbook_dir }}/fixtures/compliant_running_config.txt"
     posture_fixture_version: "17.9"
     posture_fail_on_noncompliance: false
-    # Keep the report tasks on the test runner. The role default targets a
-    # persistent report host that does not exist in a `-i localhost,` inventory.
-    posture_report_host: localhost
-    posture_report_base: "{{ playbook_dir }}/reports"
+    # Console only. Publishing to the web host is a separate play in
+    # audit_posture.yml and is not part of the catalog regression test.
+    posture_report_format: console
   roles:
     - cisco_posture_audit
   post_tasks:
@@ -34,8 +33,7 @@
     posture_fixture_file: "{{ playbook_dir }}/fixtures/noncompliant_running_config.txt"
     posture_fixture_version: "15.2"
     posture_fail_on_noncompliance: false
-    posture_report_host: localhost
-    posture_report_base: "{{ playbook_dir }}/reports"
+    posture_report_format: console
   roles:
     - cisco_posture_audit
   post_tasks:
