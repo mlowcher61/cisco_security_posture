@@ -28,7 +28,7 @@
 # those failures apply to the router hosts, not to the web host, and the
 # results survive in hostvars.
 - name: Publish the posture report to the web host
-  hosts: "{{ posture_web_host | default('backup-server') }}"
+  hosts: ansible-1 #"{{ posture_web_host | default('backup-server') }}"
   become: true
   gather_facts: true
   roles:
