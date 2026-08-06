@@ -2,9 +2,11 @@
 # Where the report site lives on the web host. Bind-mounted into the container.
 posture_web_root: /data/posture
 
-# Port nginx listens on. The network-automation/toolkit report container uses
-# 8088; 8089 keeps the two side by side on the same host without colliding.
-posture_web_port: 8089
+# Port nginx listens on. 8088 is the port the network-automation/toolkit report
+# container uses, and therefore the one RHDP lab firewalls and security groups
+# already expose. Change this only if you run both report containers at once,
+# and open the replacement port on the host firewall if you do.
+posture_web_port: 8088
 
 posture_web_container_name: posture_report
 posture_web_image: docker.io/nginx:stable-alpine3.17-slim
