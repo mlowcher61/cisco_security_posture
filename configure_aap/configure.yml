@@ -17,7 +17,7 @@
 
   vars_files:
     - vars/organizations.yml
-    - vars/projects.yml
+    # - vars/projects.yml
     - vars/inventories.yml
     - vars/groups.yml
     - vars/credentials.yml
@@ -31,17 +31,17 @@
         state: present
       loop: "{{ aap_organizations }}"
 
-    - name: Create projects
-      ansible.controller.project:
-        name: "{{ item.name }}"
-        organization: "{{ item.organization }}"
-        scm_type: "{{ item.scm_type }}"
-        scm_url: "{{ item.scm_url }}"
-        scm_branch: "{{ item.scm_branch | default('main') }}"
-        scm_clean: "{{ item.scm_clean | default(true) }}"
-        update_on_launch: "{{ item.update_on_launch | default(true) }}"
-        state: present
-      loop: "{{ aap_projects }}"
+    # - name: Create projects
+    #   ansible.controller.project:
+    #     name: "{{ item.name }}"
+    #     organization: "{{ item.organization }}"
+    #     scm_type: "{{ item.scm_type }}"
+    #     scm_url: "{{ item.scm_url }}"
+    #     scm_branch: "{{ item.scm_branch | default('main') }}"
+    #     scm_clean: "{{ item.scm_clean | default(true) }}"
+    #     update_on_launch: "{{ item.update_on_launch | default(true) }}"
+    #     state: present
+    #   loop: "{{ aap_projects }}"
 
     - name: Create inventories
       ansible.controller.inventory:
