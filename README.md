@@ -105,6 +105,54 @@ category and severity, toggle fail-vs-report-only, and choose the report format.
 Launch **Remediate - Cisco IOS Security Posture**. Leave **Dry run = true** first
 to preview the exact config lines, then re-run with **Dry run = false** to apply.
 
+## Where to find the report
+
+The audit emits the same results three ways. Which ones you get is controlled by
+the **Report format** survey answer (`console`, `file`, or `both` — default
+`both`).
+
+| Where | Survey setting | How to read it |
+|---|---|---|
+| **Job output** | `console`, `both` | In the AAP job log, look for the banner `CISCO IOS SECURITY POSTURE — <device>`, the `[ PASS ]` / `[ FAIL ]` lines, and the `RESULT:` summary. Always present. |
+| **HTML + CSV files** | `file`, `both` | Written to the **report host** — see below. The job log prints a `REPORT WRITTEN` block with the exact host and paths. |
+| **AAP job artifacts** | always | Job → **Details** pane → **Artifacts** (or `GET /api/v2/jobs/<id>/` → `.artifacts`). One entry per device: `posture_total`, `posture_failed`, `posture_compliant`, plus the report path. |
+
+### Why reports are not written inside the execution environment
+
+Under AAP the playbook runs in an **ephemeral execution environment container**.
+Anything written to `playbook_dir` — or anywhere else in that container — is
+destroyed the instant the job finishes. There is no way to retrieve it
+afterwards.
+
+So the file tasks in `roles/cisco_posture_audit/tasks/report.yml` are
+`delegate_to` a host that outlives the job:
+
+```yaml
+posture_report_host: backup-server              # must be in the inventory
+posture_report_base: /var/tmp/posture_reports
+posture_report_dir: "{{ posture_report_base }}/{{ awx_job_id | default('local') }}"
+posture_report_become: false
+```
+
+Files land as `<posture_report_dir>/posture_<device>.html` and `.csv`. One
+directory per job ID, so history is kept and concurrent jobs never overwrite
+each other.
+
+**Requirements for the report host:**
+
+- It must be a host in the **Cisco Network Inventory** (or reachable by name).
+- The job template's machine credential must be able to SSH to it. If your
+  Linux hosts use different credentials than your routers, set `ansible_user`
+  and `ansible_ssh_private_key_file` as host variables on that host in AAP.
+- The SSH user needs write access to `posture_report_base`. `/var/tmp` works
+  out of the box. To serve the HTML over a web server instead, set
+  `posture_report_base: /var/www/html/posture` **and**
+  `posture_report_become: true`.
+
+To go back to writing inside the container (useful for local
+`ansible-navigator` runs, useless under AAP), set
+`posture_report_host: localhost`.
+
 ## The checks
 
 | Category | Examples |
@@ -138,14 +186,19 @@ ansible-playbook tests/test_catalog.yml -i localhost, -e ansible_connection=loca
 ```
 
 You can also point the audit at a fixture directly. Pass an **absolute** fixture
-path (the file lookup resolves relative paths against the playbook, not your shell):
+path (the file lookup resolves relative paths against the playbook, not your
+shell), and override `posture_target` — the play defaults to the `cisco_ios`
+group, which a `-i localhost,` inventory does not have:
 
 ```bash
 ansible-playbook playbooks/audit_posture.yml -i localhost, \
+  -e posture_target=all \
   -e ansible_connection=local \
   -e posture_fixture_file="$(pwd)/tests/fixtures/noncompliant_running_config.txt" \
   -e posture_fixture_version=15.2 \
-  -e posture_fail_on_noncompliance=false
+  -e posture_fail_on_noncompliance=false \
+  -e posture_report_host=localhost \
+  -e posture_report_base="$(pwd)/tests/reports"
 ```
 
 ## Safety notes

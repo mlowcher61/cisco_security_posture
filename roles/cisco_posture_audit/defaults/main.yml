@@ -3,9 +3,23 @@
 posture_min_config_bytes: 500
 posture_fail_on_noncompliance: true
 posture_report_format: both          # console | file | both
-# Anchored to the playbook location so artifacts land in a predictable place
-# regardless of the directory the job is launched from.
-posture_report_dir: "{{ playbook_dir }}/reports"
+
+# Report artifacts are written to a host that OUTLIVES the job.
+# Under AAP the playbook runs inside an ephemeral execution environment
+# container: anything written to playbook_dir is destroyed the moment the job
+# finishes. So the file tasks delegate to posture_report_host instead.
+#
+# posture_report_host must be a host in the inventory that is reachable with
+# the job's machine credential. Set it to 'localhost' to restore the old
+# write-into-the-container behaviour (useful for local ansible-navigator runs).
+posture_report_host: backup-server
+posture_report_base: /var/tmp/posture_reports
+# One directory per job keeps history and stops concurrent jobs overwriting
+# each other. awx_job_id is injected by AAP; 'local' covers CLI runs.
+posture_report_dir: "{{ posture_report_base }}/{{ awx_job_id | default('local') }}"
+# Flip to true if you point posture_report_base at a privileged path such as
+# /var/www/html/posture so the reports can be served over HTTP.
+posture_report_become: false
 
 # Approved minimum IOS version (software currency check)
 posture_ios_min_version: "16.0"

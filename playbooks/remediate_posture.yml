@@ -1,6 +1,6 @@
 ---
 - name: Remediate Cisco IOS security posture
-  hosts: all
+  hosts: "{{ posture_target | default('cisco_ios') }}"
   gather_facts: false
   roles:
     - cisco_posture_remediate

@@ -1,6 +1,10 @@
 ---
+# Scoped to the cisco_ios group, not 'all'. Targeting every host in the
+# inventory drags in Linux hosts and localhost, which cannot run ios_command
+# and burn a rescue block each before reporting a device error.
+# Override with -e posture_target=<group> or an extra var on the job template.
 - name: Audit Cisco IOS security posture
-  hosts: all
+  hosts: "{{ posture_target | default('cisco_ios') }}"
   gather_facts: false
   pre_tasks:
     # Only override when the survey supplied a non-empty value; otherwise the

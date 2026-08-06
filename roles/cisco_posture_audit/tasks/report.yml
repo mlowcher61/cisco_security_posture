@@ -10,8 +10,9 @@
     - name: Render posture report header
       ansible.builtin.debug:
         msg:
+          - "================================================================"
           - "CISCO IOS SECURITY POSTURE — {{ inventory_hostname }}"
-          - "================================================"
+          - "================================================================"
 
     - name: Render posture report lines
       ansible.builtin.debug:
@@ -29,34 +30,60 @@
           RESULT: {{ 'COMPLIANT' if (posture_failed_list | length == 0) else 'NON-COMPLIANT' }}
           ({{ posture_failed_list | length }} of {{ posture_total }} checks failed)
 
+    # per_host keeps each device's numbers separate in the AAP job artifacts.
+    # Without it every host writes into one global '_run' bucket and aggregate
+    # ADDS the values together — three routers would report 72 total checks.
     - name: Publish compliance stats
       ansible.builtin.set_stats:
+        per_host: true
+        aggregate: false
         data:
           posture_total: "{{ posture_total | int }}"
           posture_failed: "{{ posture_failed_list | length }}"
           posture_compliant: "{{ (posture_failed_list | length) == 0 }}"
 
-    - name: Ensure report directory exists
-      ansible.builtin.file:
-        path: "{{ posture_report_dir }}"
-        state: directory
-        mode: "0755"
+    # The file tasks below run on posture_report_host, NOT on the router and
+    # not in the execution environment. become is pinned off because the
+    # cisco_ios group sets become_method=enable, which is meaningless over SSH
+    # to a Linux host and would break the delegated connection.
+    - name: Write report artifacts to the persistent report host
       when: posture_report_format in ['file', 'both']
+      delegate_to: "{{ posture_report_host }}"
+      become: "{{ posture_report_become | bool }}"
+      become_method: ansible.builtin.sudo
+      block:
+        - name: Ensure report directory exists
+          ansible.builtin.file:
+            path: "{{ posture_report_dir }}"
+            state: directory
+            mode: "0755"
 
-    - name: Write HTML and CSV report artifacts
-      ansible.builtin.template:
-        src: "posture_report.{{ item }}.j2"
-        dest: "{{ posture_report_dir }}/posture_{{ inventory_hostname }}.{{ item }}"
-        mode: "0644"
-      loop:
-        - html
-        - csv
-      when: posture_report_format in ['file', 'both']
+        - name: Write HTML and CSV report artifacts
+          ansible.builtin.template:
+            src: "posture_report.{{ item }}.j2"
+            dest: "{{ posture_report_dir }}/posture_{{ inventory_hostname }}.{{ item }}"
+            mode: "0644"
+          loop:
+            - html
+            - csv
 
     - name: Publish report path
       ansible.builtin.set_stats:
+        per_host: true
+        aggregate: false
         data:
+          posture_report_host: "{{ posture_report_host }}"
           posture_report_path: "{{ posture_report_dir }}/posture_{{ inventory_hostname }}.html"
+      when: posture_report_format in ['file', 'both']
+
+    - name: Announce where the report artifacts landed
+      ansible.builtin.debug:
+        msg:
+          - "REPORT WRITTEN — {{ inventory_hostname }}"
+          - "  host : {{ posture_report_host }}"
+          - "  html : {{ posture_report_dir }}/posture_{{ inventory_hostname }}.html"
+          - "  csv  : {{ posture_report_dir }}/posture_{{ inventory_hostname }}.csv"
+          - "  (also in the AAP job Details pane under Artifacts)"
       when: posture_report_format in ['file', 'both']
 
     - name: Fail the job when non-compliant
